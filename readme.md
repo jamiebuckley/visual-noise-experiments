@@ -1,2 +1,2 @@
 # Noise Generation & Terrain
-![alt text](https://raw.githubusercontent.com/jamiebuckley/visual-noise-experiments/master/screenshot.png)
+![alt text](/screenshot.png?raw=true)
