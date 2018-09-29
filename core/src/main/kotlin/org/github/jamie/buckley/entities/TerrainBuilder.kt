@@ -1,92 +1,112 @@
 package org.github.jamie.buckley.entities
 
 import com.badlogic.ashley.core.Entity
+import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
-import com.badlogic.gdx.graphics.Pixmap
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.VertexAttributes
 import com.badlogic.gdx.graphics.g3d.Material
 import com.badlogic.gdx.graphics.g3d.ModelInstance
+import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
 import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
 import main.org.github.jamie.buckley.components.ModelInstanceComponent
 import main.org.github.jamie.buckley.components.PositionComponent
 import org.apache.logging.log4j.LogManager
 import org.github.jamie.buckley.entities.terrain.BiomeGenerator
-import org.github.jamiebuckley.math.HeightField
-import org.github.jamiebuckley.math.OpenSimplexNoise
+import org.github.jamie.buckley.entities.terrain.TerrainGenerator
+import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder
+import com.badlogic.gdx.math.DelaunayTriangulator
+import com.badlogic.gdx.math.Vector2
+import com.badlogic.gdx.math.Vector3
 
 
-class TerrainBuilder {
+class TerrainBuilder(val width: Int, val height: Int) {
 
     val logger = LogManager.getLogger(this::class.java)
 
-    val iterations = 2..8
-    val random = iterations.map { Math.random() * 5 }
-    val openSimplexNoise = OpenSimplexNoise()
+    val biomeTexture = BiomeGenerator(width, height).generate()
+    var terrainTexture = TerrainGenerator(width, height, biomeTexture = biomeTexture.texture).generate()
 
-    var terrainTexture: Pixmap? = null
-    var biomeTexture: Pixmap? = null
+    fun get(xStart: Int, yStart: Int, size: Int): Entity {
+        logger.info("get({}, {}, {})", xStart, yStart, size)
+        val material = Material(ColorAttribute.createDiffuse(Color.WHITE))
+        val modelBuilder = ModelBuilder()
+        modelBuilder.begin()
+        val meshPartBuilder = modelBuilder.part("test", GL20.GL_TRIANGLES,
+                VertexAttributes.Usage.Position.toLong()
+                or VertexAttributes.Usage.TextureCoordinates.toLong()
+                or VertexAttributes.Usage.ColorPacked.toLong()
+                or VertexAttributes.Usage.Normal.toLong(), material)
 
-    fun get(): Entity {
-        val biomeGeneration = BiomeGenerator().generate()
-        biomeTexture = biomeGeneration.texture
 
-        terrainTexture = getTerrain()
-        val h = HeightField(true, terrainTexture, true, VertexAttributes.Usage.Position or VertexAttributes.Usage.Normal or VertexAttributes.Usage.ColorUnpacked or VertexAttributes.Usage.TextureCoordinates)
+        var i = 0
+        var i2 = 0
+        val xRange = (xStart * size) .. (xStart * size + size) step 5
+        val yRange = (yStart * size) .. (yStart * size + size) step 5
+        val positions = FloatArray(xRange.count() * yRange.count() * 3)
+        val d2Positions = FloatArray((xRange.count() * yRange.count()) * 2)
+        val d2Colors = Array(xRange.count() * yRange.count(), init = { Color() })
+        for(x in xRange) {
+            for (z in yRange) {
+                val height = Color(terrainTexture.getPixel(x, z)).r * 50f
+                val xRand = (Math.random() * 2).toInt()
+                val zRand = (Math.random() * 2).toInt()
+                positions[i] = x.toFloat() + xRand
+                positions[i + 1] = height
+                positions[i + 2] = z.toFloat() + zRand
 
-        val landScale = 50f
-        h.corner00.set(-landScale, 0f, -landScale)
-        h.corner10.set(landScale, 0f, -landScale)
-        h.corner01.set(-landScale, 0f, landScale)
-        h.corner11.set(landScale, 0f, landScale)
-        h.magnitude.set(0f, 20f, 0f)
-        h.update()
+                val color = Color(biomeTexture.texture.getPixel(x, z))
+                d2Colors[x / 5 * xRange.count() + z / 5] = color
 
-        val m = ModelBuilder()
-
-        m.begin()
-        m.part("terrain01", h.mesh,
-                GL20.GL_TRIANGLES,
-                Material(TextureAttribute.createDiffuse(Texture(biomeTexture))))
-
-        val model = m.end()
-        val instance = ModelInstance(model)
-
-        val e = Entity()
-        e.add(PositionComponent())
-        e.add(ModelInstanceComponent(instance))
-        return e
-    }
-
-    fun getTerrain(): Pixmap {
-        val px = Pixmap(256, 256, Pixmap.Format.RGBA8888)
-        for (x in 0 until px.width) {
-            for (y in 0 until px.height) {
-                val value = getHeight(x, y)
-
-                px.setColor(value.toFloat(), value.toFloat(), value.toFloat(), 1.0f)
-                px.drawRectangle(x, y, 1, 1)
+                d2Positions[i2] = x.toFloat() + xRand
+                d2Positions[i2 + 1] = z.toFloat() + zRand
+                i+= 3
+                i2+=2
             }
         }
-        return px
-    }
+        val triangulator = DelaunayTriangulator()
+        val indices = triangulator.computeTriangles(d2Positions, false)
+        for (i in 0 until indices.size step 3) {
+            val v1 = indices[i]
+            val v2 = indices[i + 1]
+            val v3 = indices[i + 2]
 
-    private fun getHeight(x: Int, y: Int): Double {
-        val noiseResults = iterations.mapIndexed { index, iteration ->
-            val noiseScale = 1.0f / (iteration * 2)
-            val result = openSimplexNoise.eval(x.toDouble() * noiseScale + random[index], y.toDouble() * noiseScale + random[index])
-            result
+            val vx1 = v1 * 3
+            val vx2 = v2 * 3
+            val vx3 = v3 * 3
+
+            val pv1 = Vector3(positions[vx1], positions[vx1 + 1], positions[vx1 + 2])
+            val pv2 = Vector3(positions[vx2], positions[vx2 + 1], positions[vx2 + 2])
+            val pv3 = Vector3(positions[vx3], positions[vx3 + 1], positions[vx3 + 2])
+
+            val normalA = (Vector3(pv2).sub(pv1))
+            val normalB = (Vector3(pv3).sub(pv1))
+            val normal = normalA.crs(normalB)
+
+            var color: Color = when(pv1.y) {
+                in 0.0..0.8 -> Color.valueOf("e5e868")
+                in 0.8..10.0 -> Color.valueOf("57d65e")
+                in 10.0..20.0 -> Color.GRAY
+                else -> Color.WHITE
+            }
+            //val color = d2Colors[v1.toInt()]
+
+            val p1 = MeshPartBuilder.VertexInfo().setPos(pv1).setNor(normal).setCol(color)
+            val p2 = MeshPartBuilder.VertexInfo().setPos(pv2).setNor(normal).setCol(color)
+            val p3 = MeshPartBuilder.VertexInfo().setPos(pv3).setNor(normal).setCol(color)
+
+            meshPartBuilder.triangle(p1, p2, p3)
         }
-        val noiseResultsScaled = noiseResults.mapIndexed { index, noiseResult ->
-            noiseResult / (iterations.count())
-        }
 
-        val height = Math.max((noiseResultsScaled.sum() + 1) / 2, 0.0)
+        val model = modelBuilder.end()
 
-        val baseNoise = openSimplexNoise.eval(x.toDouble() * 0.01, y.toDouble() * 0.01)
-        val height2 = Math.max((baseNoise + 1) / 2, 0.0)
-        val finalHeight = (0.5 * height) + (0.5 * height2)
-        return finalHeight
+        val e = Entity()
+        val positionComponent = PositionComponent()
+        positionComponent.x = -128f
+        positionComponent.z = -128f
+        e.add(positionComponent)
+        e.add(ModelInstanceComponent(ModelInstance(model)))
+        return e
     }
 }

@@ -24,10 +24,10 @@ class RenderingSystem : IteratingSystem(Family.all(PositionComponent::class.java
     private val modelBatch = ModelBatch()
     private val camera = PerspectiveCamera(67f, Gdx.graphics.width.toFloat(), Gdx.graphics.height.toFloat())
     init {
-        camera.position.set(10f, 10f, 10f)
+        camera.position.set(50f, 50f, 50f)
         camera.lookAt(0f, 0f, 0f)
         camera.near = 1f
-        camera.far = 300f
+        camera.far = 500f
         camera.update()
     }
     private val cameraInputController = CameraInputController(camera)
@@ -38,7 +38,7 @@ class RenderingSystem : IteratingSystem(Family.all(PositionComponent::class.java
     private val environment = Environment()
     init {
         environment.set(ColorAttribute(ColorAttribute.AmbientLight, 0.4f, 0.4f, 0.4f, 1f))
-        environment.add(DirectionalLight().set(0.8f, 0.8f, 0.8f, -1f, -0.8f, -0.2f))
+        environment.add(DirectionalLight().set(0.7f, 0.7f, 0.7f, -1f, -0.8f, -0.2f))
     }
 
     private val positionMapper = ComponentMapper.getFor(PositionComponent::class.java)

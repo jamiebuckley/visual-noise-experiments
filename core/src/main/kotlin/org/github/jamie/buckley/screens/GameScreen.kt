@@ -7,24 +7,27 @@ import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import main.org.github.jamie.buckley.systems.RenderingSystem
 import org.apache.logging.log4j.LogManager
+import org.github.jamie.buckley.entities.SeaGenerator
 import org.github.jamie.buckley.entities.TerrainBuilder
+import org.github.jamie.buckley.entities.terrain.TerrainGenerator
 
 class GameScreen : Screen {
 
     private val logger = LogManager.getLogger(this::class.java)
     private val engine = Engine()
 
-    private val terrainBuilder = TerrainBuilder()
-
-    var spriteBatch = SpriteBatch()
-    var texture: Texture? = null
+    private val terrainBuilder = TerrainBuilder(256, 256)
+    private val seaBuilder = SeaGenerator()
 
     init {
         logger.info("create() entered")
         engine.addSystem(RenderingSystem())
-        //engine.addEntity(WorkerEntityBuilder().get())
-        engine.addEntity(terrainBuilder.get())
-        texture = Texture(terrainBuilder.biomeTexture)
+        for(x in 0..0) {
+            for(y in 0..0) {
+                engine.addEntity(terrainBuilder.get(x, y, 256))
+            }
+        }
+        engine.addEntity(seaBuilder.get())
     }
 
     override fun hide() {
@@ -37,9 +40,6 @@ class GameScreen : Screen {
 
     override fun render(delta: Float) {
         engine.update(Gdx.graphics.deltaTime)
-        spriteBatch.begin()
-        spriteBatch.draw(texture, 0f, 0f, 200f, 200f)
-        spriteBatch.end()
     }
 
     override fun pause() {
