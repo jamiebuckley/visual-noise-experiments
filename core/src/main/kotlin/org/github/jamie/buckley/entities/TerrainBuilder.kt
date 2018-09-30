@@ -3,12 +3,12 @@ package org.github.jamie.buckley.entities
 import com.badlogic.ashley.core.Entity
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
+import com.badlogic.gdx.graphics.Pixmap
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.VertexAttributes
 import com.badlogic.gdx.graphics.g3d.Material
 import com.badlogic.gdx.graphics.g3d.ModelInstance
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
-import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
 import main.org.github.jamie.buckley.components.ModelInstanceComponent
 import main.org.github.jamie.buckley.components.PositionComponent
@@ -17,18 +17,24 @@ import org.github.jamie.buckley.entities.terrain.BiomeGenerator
 import org.github.jamie.buckley.entities.terrain.TerrainGenerator
 import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder
 import com.badlogic.gdx.math.DelaunayTriangulator
-import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.math.Vector3
+import org.github.jamie.buckley.entities.terrain.TerrainOffsetGenerator
 
 
-class TerrainBuilder(val width: Int, val height: Int) {
+class TerrainBuilder(private val width: Int,
+                     private val height: Int,
+                     private val biomeTexture: Pixmap,
+                     private val terrainTexture: Pixmap,
+                     private val offsetTexture: Pixmap) {
 
-    val logger = LogManager.getLogger(this::class.java)
+    private val logger = LogManager.getLogger(this::class.java)
 
-    val biomeTexture = BiomeGenerator(width, height).generate()
-    var terrainTexture = TerrainGenerator(width, height, biomeTexture = biomeTexture.texture).generate()
+    constructor(width: Int, height: Int): this(width, height,
+            BiomeGenerator(width, height).generate(),
+            TerrainGenerator(width, height).generate(),
+            TerrainOffsetGenerator(width, height).generate())
 
-    fun get(xStart: Int, yStart: Int, size: Int): Entity {
+    fun get(xStart: Int, yStart: Int, size: Int, step: Int): Entity {
         logger.info("get({}, {}, {})", xStart, yStart, size)
         val material = Material(ColorAttribute.createDiffuse(Color.WHITE))
         val modelBuilder = ModelBuilder()
@@ -42,22 +48,30 @@ class TerrainBuilder(val width: Int, val height: Int) {
 
         var i = 0
         var i2 = 0
-        val xRange = (xStart * size) .. (xStart * size + size) step 5
-        val yRange = (yStart * size) .. (yStart * size + size) step 5
+        val xRange = (xStart * size) .. (xStart * size + size) step step
+        val yRange = (yStart * size) .. (yStart * size + size) step step
         val positions = FloatArray(xRange.count() * yRange.count() * 3)
         val d2Positions = FloatArray((xRange.count() * yRange.count()) * 2)
-        val d2Colors = Array(xRange.count() * yRange.count(), init = { Color() })
         for(x in xRange) {
             for (z in yRange) {
-                val height = Color(terrainTexture.getPixel(x, z)).r * 50f
-                val xRand = (Math.random() * 2).toInt()
-                val zRand = (Math.random() * 2).toInt()
+                val height = Color(terrainTexture.getPixel(x, z)).r * 100f
+                val offsetColor = Color(offsetTexture.getPixel(x, z))
+
+                var xRand = 0f
+                var zRand = 0f
+                val distanceNoiseCutoff = 8
+                if (Math.abs((xStart * size) - x) < distanceNoiseCutoff
+                        || Math.abs((xStart * size + size) - x) < distanceNoiseCutoff
+                        || Math.abs((yStart * size) - z) < distanceNoiseCutoff
+                        || Math.abs((yStart * size + size) - z) < distanceNoiseCutoff ) {
+
+                } else {
+                    xRand = offsetColor.r * 1
+                    zRand = offsetColor.g * 1
+                }
                 positions[i] = x.toFloat() + xRand
                 positions[i + 1] = height
                 positions[i + 2] = z.toFloat() + zRand
-
-                val color = Color(biomeTexture.texture.getPixel(x, z))
-                d2Colors[x / 5 * xRange.count() + z / 5] = color
 
                 d2Positions[i2] = x.toFloat() + xRand
                 d2Positions[i2 + 1] = z.toFloat() + zRand

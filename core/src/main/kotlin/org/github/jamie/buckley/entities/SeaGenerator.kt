@@ -12,7 +12,7 @@ import main.org.github.jamie.buckley.components.PositionComponent
 
 public class SeaGenerator {
     private val modelBuilder = ModelBuilder()
-    private val model = modelBuilder.createBox(500f, 0.1f, 500f, Material(ColorAttribute.createDiffuse(Color.valueOf("6767e5"))), (VertexAttributes.Usage.Position or VertexAttributes.Usage.Normal).toLong())!!
+    private val model = modelBuilder.createBox(5000f, 0.1f, 5000f, Material(ColorAttribute.createDiffuse(Color.valueOf("6767e5"))), (VertexAttributes.Usage.Position or VertexAttributes.Usage.Normal).toLong())!!
 
     fun get(): Entity {
         val entity = Entity()

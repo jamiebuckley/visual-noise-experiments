@@ -27,12 +27,13 @@ class RenderingSystem : IteratingSystem(Family.all(PositionComponent::class.java
         camera.position.set(50f, 50f, 50f)
         camera.lookAt(0f, 0f, 0f)
         camera.near = 1f
-        camera.far = 500f
+        camera.far = 1000f
         camera.update()
     }
     private val cameraInputController = CameraInputController(camera)
     init {
         Gdx.input.inputProcessor = cameraInputController
+        cameraInputController.translateUnits = 60.0f
     }
 
     private val environment = Environment()

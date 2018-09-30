@@ -8,8 +8,6 @@ class BiomeGenerator(val width: Int, val height: Int) {
 
     val logger = LogManager.getLogger(this::class.java)
 
-    class BiomeMap(val texture: Pixmap)
-
     object BiomeType {
         val FLATS = Color.GREEN
         val MOUNTAINS = Color.GRAY
@@ -20,7 +18,7 @@ class BiomeGenerator(val width: Int, val height: Int) {
     val divisor = 50f
 
 
-    fun generate(): BiomeMap {
+    fun generate(): Pixmap {
         logger.info("Generate")
         val biomeList = getBiomes()
 
@@ -32,7 +30,7 @@ class BiomeGenerator(val width: Int, val height: Int) {
 
         val biomeTexture = getBiomeTexture(biomeList)
         logger.info("Generate ended")
-        return BiomeMap(biomeTexture)
+        return biomeTexture
     }
 
 
